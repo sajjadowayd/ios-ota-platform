@@ -1,0 +1,86 @@
+import Image from 'next/image';
+import { notFound } from 'next/navigation';
+import { getApp, getIconUrl } from '@/lib/api';
+import InstallButton from '@/components/InstallButton';
+
+interface PageProps {
+  params: { id: string };
+}
+
+export default async function AppDetailPage({ params }: PageProps) {
+  let app;
+  try {
+    app = await getApp(params.id);
+  } catch {
+    notFound();
+  }
+
+  const iconUrl = getIconUrl(app.iconFilename);
+
+  return (
+    <div className="max-w-lg mx-auto space-y-8">
+      {/* Back */}
+      <a href="/" className="inline-flex items-center gap-1 text-blue-600 text-sm hover:underline">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+        Back to Library
+      </a>
+
+      {/* App header */}
+      <div className="flex items-start gap-5">
+        <div className="relative w-24 h-24 flex-shrink-0">
+          <Image
+            src={iconUrl}
+            alt={`${app.name} icon`}
+            fill
+            className="rounded-2xl object-cover shadow-md"
+            unoptimized
+          />
+        </div>
+        <div className="pt-1">
+          <h1 className="text-2xl font-bold text-gray-900 leading-tight">{app.name}</h1>
+          {app.category && (
+            <span className="inline-block mt-1 text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+              {app.category}
+            </span>
+          )}
+          <p className="text-sm text-gray-500 mt-1">
+            Version {app.version} &middot; {app.downloadCount} installs
+          </p>
+          <p className="text-xs text-gray-400 font-mono mt-1">{app.bundleId}</p>
+        </div>
+      </div>
+
+      {/* Install button */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex justify-center">
+        <InstallButton appId={app.id} appName={app.name} />
+      </div>
+
+      {/* Description */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-2">
+        <h2 className="font-semibold text-gray-900">Description</h2>
+        <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap">
+          {app.description}
+        </p>
+      </div>
+
+      {/* Details */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <h2 className="font-semibold text-gray-900 mb-4">Information</h2>
+        <dl className="space-y-3">
+          {[
+            { label: 'Bundle ID', value: app.bundleId },
+            { label: 'Version', value: app.version },
+            { label: 'Downloads', value: String(app.downloadCount) },
+          ].map(({ label, value }) => (
+            <div key={label} className="flex justify-between text-sm">
+              <dt className="text-gray-500">{label}</dt>
+              <dd className="font-medium text-gray-900">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </div>
+  );
+}
