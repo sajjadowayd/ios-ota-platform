@@ -1,6 +1,6 @@
 # iOS OTA App Distribution Platform
 
-A full-stack platform for distributing iOS applications Over-The-Air (OTA) without the App Store. Admins upload IPA files through a web panel; users browse and install apps directly on their iPhone or iPad through Safari using Apple's `itms-services://` protocol.
+A full-stack platform for distributing iOS applications Over-The-Air (OTA) without the App Store. Admins upload IPA files, sign them with certificates, and users install apps directly on their iPhone or iPad through Safari using Apple's `itms-services://` protocol.
 
 ---
 
@@ -16,8 +16,6 @@ A full-stack platform for distributing iOS applications Over-The-Air (OTA) witho
 - [Admin Panel](#admin-panel)
 - [OTA Install Flow](#ota-install-flow)
 - [Database Schema](#database-schema)
-- [Seeding Dummy Data](#seeding-dummy-data)
-- [Telegram Integration](#telegram-integration)
 - [Security](#security)
 
 ---
@@ -45,11 +43,13 @@ The `manifest.plist` is an Apple XML file that contains:
 | Layer | Technology |
 |-------|-----------|
 | Frontend | Next.js 14 (App Router) + Tailwind CSS |
-| Backend | Express.js + TypeScript |
+| Backend | NestJS + TypeScript |
 | Database | PostgreSQL 16 |
 | ORM | Prisma |
-| Auth | JWT (jsonwebtoken) |
+| Auth | JWT (Passport.js) |
 | File Upload | Multer |
+| IPA Signing | zsign |
+| Certificate Parsing | node-forge |
 | HTTPS Tunnel | Cloudflare Quick Tunnel (`cloudflared`) |
 
 ---
@@ -60,51 +60,97 @@ The `manifest.plist` is an Apple XML file that contains:
 ios-ota-platform/
 ├── backend/
 │   ├── src/
-│   │   ├── index.ts                  # Express entry point
-│   │   ├── routes/
-│   │   │   ├── auth.ts               # POST /api/auth/login
-│   │   │   ├── apps.ts               # GET / POST / DELETE /api/apps
-│   │   │   ├── manifest.ts           # GET /api/apps/:id/manifest.plist
-│   │   │   └── files.ts              # GET /files/ipa/:f  /files/icons/:f
-│   │   ├── middleware/
-│   │   │   ├── auth.ts               # JWT verification guard
-│   │   │   └── upload.ts             # Multer config (IPA + icon)
-│   │   ├── services/
-│   │   │   └── plist.ts              # Apple manifest XML generator
-│   │   └── lib/
-│   │       └── prisma.ts             # Prisma client singleton
+│   │   ├── main.ts                      # NestJS bootstrap
+│   │   ├── app.module.ts                # Root module
+│   │   ├── auth/                        # JWT authentication
+│   │   │   ├── auth.module.ts
+│   │   │   ├── auth.controller.ts       # POST /api/auth/login
+│   │   │   ├── auth.service.ts
+│   │   │   ├── strategies/jwt.strategy.ts
+│   │   │   └── dto/login.dto.ts
+│   │   ├── apps/                        # App CRUD
+│   │   │   ├── apps.module.ts
+│   │   │   ├── apps.controller.ts       # GET/POST/DELETE /api/apps
+│   │   │   ├── apps.service.ts
+│   │   │   └── dto/
+│   │   ├── versions/                    # Version history
+│   │   │   ├── versions.module.ts
+│   │   │   ├── versions.controller.ts   # GET/POST /api/apps/:id/versions
+│   │   │   ├── versions.service.ts
+│   │   │   └── dto/
+│   │   ├── certificates/                # Certificate management
+│   │   │   ├── certificates.module.ts
+│   │   │   ├── certificates.controller.ts
+│   │   │   ├── certificates.service.ts
+│   │   │   └── dto/
+│   │   ├── signer/                      # IPA signing (zsign)
+│   │   │   ├── signer.module.ts
+│   │   │   ├── signer.controller.ts
+│   │   │   └── signer.service.ts
+│   │   ├── manifest/                    # manifest.plist generation
+│   │   │   ├── manifest.module.ts
+│   │   │   ├── manifest.controller.ts
+│   │   │   └── manifest.service.ts
+│   │   ├── files/                       # File serving + download tracking
+│   │   │   ├── files.module.ts
+│   │   │   ├── files.controller.ts
+│   │   │   └── files.service.ts
+│   │   ├── storage/                     # Structured file storage
+│   │   │   ├── storage.module.ts
+│   │   │   └── storage.service.ts
+│   │   ├── prisma/                      # Prisma client module
+│   │   │   ├── prisma.module.ts
+│   │   │   └── prisma.service.ts
+│   │   └── common/
+│   │       ├── guards/jwt-auth.guard.ts
+│   │       ├── crypto/encryption.service.ts
+│   │       ├── pipes/file-validation.pipe.ts
+│   │       └── filters/http-exception.filter.ts
 │   ├── prisma/
-│   │   ├── schema.prisma             # App database model
-│   │   ├── seed.ts                   # 6 dummy apps for testing
-│   │   └── migrations/               # Auto-generated SQL migrations
-│   ├── uploads/
-│   │   ├── ipa/                      # Stored IPA files (UUID names)
-│   │   └── icons/                    # Stored icon images (UUID names)
-│   ├── .env                          # Local config (not committed)
+│   │   ├── schema.prisma                # Database models
+│   │   ├── seed.ts
+│   │   ├── migrate-storage.ts           # Data migration script
+│   │   └── migrations/
+│   ├── storage/                         # Structured file storage
+│   │   ├── apps/{appId}/
+│   │   │   ├── icon.png
+│   │   │   └── versions/{versionId}/
+│   │   │       ├── original.ipa
+│   │   │       ├── signed.ipa
+│   │   │       └── manifest.plist
+│   │   └── certs/{certId}/
+│   │       ├── cert.p12
+│   │       └── profile.mobileprovision
+│   ├── .env
 │   ├── package.json
-│   └── tsconfig.json
+│   ├── tsconfig.json
+│   └── nest-cli.json
 │
 ├── frontend/
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── layout.tsx            # Root layout + nav header
-│   │   │   ├── page.tsx              # / — App library with search
-│   │   │   ├── apps/[id]/page.tsx    # /apps/:id — App detail + install
+│   │   │   ├── layout.tsx               # Root layout + nav header
+│   │   │   ├── page.tsx                 # / — App library with search
+│   │   │   ├── apps/[id]/page.tsx       # /apps/:id — Detail + install + versions
 │   │   │   └── admin/
-│   │   │       ├── page.tsx          # /admin — Login
-│   │   │       └── dashboard/page.tsx# /admin/dashboard — Upload & manage
+│   │   │       ├── page.tsx             # /admin — Login
+│   │   │       └── dashboard/
+│   │   │           ├── layout.tsx       # Sidebar layout
+│   │   │           ├── page.tsx         # Apps management
+│   │   │           ├── certificates/    # Certificate management
+│   │   │           └── signing/         # IPA signing workflow
 │   │   ├── components/
-│   │   │   ├── AppCard.tsx           # App grid card
-│   │   │   ├── InstallButton.tsx     # OTA install + Telegram redirect
-│   │   │   └── SearchBar.tsx         # Live search input
+│   │   │   ├── AppCard.tsx
+│   │   │   ├── InstallButton.tsx
+│   │   │   └── SearchBar.tsx
 │   │   └── lib/
-│   │       └── api.ts                # Typed fetch wrappers
-│   ├── .env.local                    # Local config (not committed)
+│   │       └── api.ts                   # Typed fetch wrappers
+│   ├── .env.local
 │   ├── next.config.js
 │   ├── tailwind.config.js
 │   └── package.json
 │
-├── .env.example                      # Config template with instructions
+├── .env.example
 └── README.md
 ```
 
@@ -116,6 +162,7 @@ ios-ota-platform/
 
 - Node.js 18+
 - PostgreSQL 16 running locally
+- `zsign` installed (for IPA signing — optional for basic usage)
 - `cloudflared` for HTTPS tunneling (required for real device testing)
 
 ### 1. Clone the repository
@@ -139,7 +186,6 @@ npx prisma generate
 
 ```bash
 cd ../frontend
-# Create .env.local
 echo "NEXT_PUBLIC_API_URL=http://localhost:3001" > .env.local
 npm install
 ```
@@ -160,14 +206,12 @@ npm run dev
 # Running on http://localhost:3000
 ```
 
-### 6. Seed dummy data (optional)
+### 6. Migrate existing data (if upgrading)
 
 ```bash
 cd backend
-npx prisma db seed
+npm run migrate-storage
 ```
-
-This creates 6 sample apps with generated icons and placeholder IPA files so you can explore the UI immediately.
 
 ---
 
@@ -176,31 +220,22 @@ This creates 6 sample apps with generated icons and placeholder IPA files so you
 ### `backend/.env`
 
 ```env
-# PostgreSQL connection
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ota_db
-
-# JWT secret — change this to a long random string in production
 JWT_SECRET=change-me-to-a-long-random-secret
-
-# Admin credentials
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin123
-
-# Public base URL of the backend — used to build manifest.plist URLs
-# Must be HTTPS for real device OTA testing
 BASE_URL=http://localhost:3001
-
-# Server port
 PORT=3001
-
-# Allowed CORS origins (comma-separated)
 CORS_ORIGIN=http://localhost:3000
+
+# Optional: 64-char hex string for certificate password encryption
+# If empty, a key is derived from JWT_SECRET
+ENCRYPTION_KEY=
 ```
 
 ### `frontend/.env.local`
 
 ```env
-# Must match BASE_URL in backend — must be HTTPS for real device testing
 NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
 
@@ -214,230 +249,103 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 |--------|----------|-------------|
 | `POST` | `/api/auth/login` | Admin login — returns JWT token |
 
-**Request body:**
-```json
-{ "username": "admin", "password": "admin123" }
-```
-
-**Response:**
-```json
-{ "token": "eyJhbGciOiJIUzI1NiIs..." }
-```
-
----
-
 ### Apps
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| `GET` | `/api/apps` | No | List all apps. Add `?search=name` to filter |
-| `GET` | `/api/apps/:id` | No | Get single app by ID |
-| `POST` | `/api/apps` | Yes | Upload a new app (multipart/form-data) |
-| `DELETE` | `/api/apps/:id` | Yes | Delete app and its files |
+| `GET` | `/api/apps` | No | List apps (search, category, pagination) |
+| `GET` | `/api/apps/:id` | No | Get app with versions |
+| `POST` | `/api/apps` | Yes | Upload new app (multipart) |
+| `DELETE` | `/api/apps/:id` | Yes | Delete app + all versions |
 
-**POST `/api/apps` — form fields:**
+### Versions
 
-| Field | Type | Required |
-|-------|------|----------|
-| `name` | text | Yes |
-| `bundleId` | text | Yes |
-| `version` | text | Yes |
-| `description` | text | Yes |
-| `category` | text | No |
-| `ipa` | file (`.ipa`) | Yes |
-| `icon` | file (image) | Yes |
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `GET` | `/api/apps/:appId/versions` | No | List all versions |
+| `POST` | `/api/apps/:appId/versions` | Yes | Upload new version |
+| `POST` | `/api/apps/:appId/versions/:vId/sign` | Yes | Sign version with certificate |
 
----
+### Certificates
 
-### Manifest
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| `GET` | `/api/certificates` | Yes | List certificates |
+| `POST` | `/api/certificates` | Yes | Upload .p12 + provisioning profile |
+| `DELETE` | `/api/certificates/:id` | Yes | Delete certificate |
+| `PATCH` | `/api/certificates/:id/default` | Yes | Set default certificate |
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/apps/:id/manifest.plist` | Returns Apple plist XML (`application/xml`) |
-
----
-
-### Files
+### Manifest & Files
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/files/ipa/:filename` | Download IPA file (increments download count) |
-| `GET` | `/files/icons/:filename` | Get app icon image |
-
----
-
-### Health
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/health` | Returns `{ "status": "ok" }` |
+| `GET` | `/api/apps/:id/manifest.plist` | Apple plist XML |
+| `GET` | `/files/apps/:appId/icon` | App icon |
+| `GET` | `/files/apps/:appId/versions/:vId/ipa` | Download IPA |
+| `GET` | `/health` | Health check |
 
 ---
 
 ## HTTPS Setup
 
-Apple requires the manifest URL and IPA URL to be served over **HTTPS** for OTA installation to work on real devices. For local development, use a tunnel.
+Apple requires the manifest URL and IPA URL to be served over **HTTPS** for OTA installation to work on real devices.
 
-### Option 1 — Cloudflare Quick Tunnel (Recommended)
-
-No account required. Provides a `.trycloudflare.com` URL instantly.
+### Cloudflare Quick Tunnel (Recommended)
 
 ```bash
-# Download cloudflared (Windows)
-curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe -o cloudflared.exe
-
-# Start backend tunnel (port 3001)
-./cloudflared.exe tunnel --url http://localhost:3001
-
-# Start frontend tunnel (port 3000) — in a second terminal
-./cloudflared.exe tunnel --url http://localhost:3000
+cloudflared tunnel --url http://localhost:3001   # backend
+cloudflared tunnel --url http://localhost:3000   # frontend (second terminal)
 ```
 
-After starting, update your env files with the HTTPS URLs:
-
-```env
-# backend/.env
-BASE_URL=https://your-backend-url.trycloudflare.com
-CORS_ORIGIN=http://localhost:3000,https://your-frontend-url.trycloudflare.com
-
-# frontend/.env.local
-NEXT_PUBLIC_API_URL=https://your-backend-url.trycloudflare.com
-```
-
-Then touch `backend/src/index.ts` to trigger a hot-reload so the backend picks up the new `BASE_URL`.
-
-### Option 2 — ngrok
-
-Free account required at [ngrok.com](https://ngrok.com).
-
-```bash
-ngrok config add-authtoken <your-token>
-ngrok http 3001   # backend
-ngrok http 3000   # frontend (separate terminal)
-```
-
-### Option 3 — localhost.run (no install)
-
-```bash
-ssh -R 80:localhost:3001 nokey@localhost.run
-```
+Update your env files with the HTTPS URLs.
 
 ---
 
 ## Admin Panel
 
-Access the admin panel at `/admin`.
+Access at `/admin`. Default credentials: `admin` / `admin123`.
 
-**Default credentials:**
-```
-Username: admin
-Password: admin123
-```
+The admin dashboard has a **sidebar layout** with three sections:
 
-Change these in `backend/.env` before deploying.
-
-### Uploading an App
-
-1. Go to `http://localhost:3000/admin`
-2. Sign in with admin credentials
-3. Click **+ Upload App**
-4. Fill in:
-   - **App Name** — display name shown to users
-   - **Bundle ID** — e.g. `com.yourcompany.appname`
-   - **Version** — e.g. `1.0.0`
-   - **Description** — shown on the app detail page
-   - **Category** — optional label (e.g. Productivity, Games)
-   - **IPA File** — your signed `.ipa` file
-   - **App Icon** — PNG or JPG, ideally 512×512px
-5. Click **Upload App**
-
-The app immediately appears in the public library.
+1. **Apps** — Upload, view, and delete apps
+2. **Certificates** — Upload .p12 certificates and provisioning profiles, set defaults
+3. **Signing** — Select a certificate and sign app versions with zsign
 
 ---
 
 ## OTA Install Flow
 
 ```
-Admin uploads IPA + icon
-        │
-        └─► Files saved to uploads/ with UUID filenames
-        └─► App record created in PostgreSQL
+Admin uploads IPA + icon + metadata
+  └─► Files saved to storage/apps/{id}/
+  └─► App record + AppVersion created
 
-User opens Safari on iPhone → visits the frontend URL
-        │
-        └─► Sees app library grid
+Admin uploads certificate (.p12 + provisioning profile)
+  └─► Password validated and encrypted (AES-256-GCM)
+  └─► Certificate info extracted via node-forge
 
-User taps an app card → detail page
-        │
-        └─► Icon, name, version, description displayed
-        └─► "Install" button visible
+Admin signs an app version
+  └─► zsign re-signs the IPA with the selected certificate
+  └─► manifest.plist auto-generated
 
-User taps "Install"
-        │
-        ├─► Safari intercepts itms-services:// link
-        │       └─► Fetches manifest.plist from backend (HTTPS)
-        │       └─► Reads bundle ID, version, IPA URL
-        │       └─► Shows native iOS install confirmation
-        │       └─► Downloads and installs the .ipa
-        │
-        └─► After 2 seconds → redirected to https://t.me/appos4
+User opens Safari → visits frontend URL
+  └─► Sees app library grid
+  └─► Taps app → detail page with version history
+  └─► Taps "Install"
+        └─► Safari intercepts itms-services:// link
+        └─► Fetches manifest.plist → downloads signed IPA
+        └─► Native iOS install prompt
 ```
 
 ---
 
 ## Database Schema
 
-```prisma
-model App {
-  id            String   @id @default(uuid())
-  name          String
-  bundleId      String
-  version       String
-  description   String
-  category      String?
-  ipaFilename   String        // UUID-based filename in uploads/ipa/
-  iconFilename  String        // UUID-based filename in uploads/icons/
-  downloadCount Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-```
-
----
-
-## Seeding Dummy Data
-
-```bash
-cd backend
-npx prisma db seed
-```
-
-Creates 6 sample apps:
-
-| App | Bundle ID | Category | Version |
-|-----|-----------|----------|---------|
-| TaskFlow Pro | com.taskflow.pro | Productivity | 2.1.0 |
-| FitTrack | com.fittrack.app | Health & Fitness | 1.5.3 |
-| SnapEdit | com.snapedit.photo | Photo & Video | 3.0.1 |
-| CryptoWatch | com.cryptowatch.finance | Finance | 1.2.0 |
-| GameZone | com.gamezone.arcade | Games | 4.1.2 |
-| DevConsole | com.devconsole.tools | Developer Tools | 1.0.4 |
-
-The seed script skips if apps already exist to prevent duplicates.
-
----
-
-## Telegram Integration
-
-When a user taps **Install**, the platform automatically redirects them to the Telegram channel after 2 seconds:
-
-```
-https://t.me/appos4
-```
-
-This is implemented in `InstallButton.tsx` using `window.location.href` (page navigation) rather than `window.open` — because iOS Safari blocks `window.open` calls inside `setTimeout` as they are not considered a direct user gesture.
-
-A persistent Telegram link is also displayed below the Install button so users can join the channel independently.
+- **App** — name, bundleId, version, description, category, iconPath, downloadCount
+- **AppVersion** — version, originalIpaPath, signedIpaPath, manifestPath, signingStatus, fileSize, downloadCount
+- **Certificate** — name, teamName, expiresAt, p12Path, encryptedPassword, provisionProfilePath, isDefault
+- **Download** — appId, versionId, ipAddress, userAgent, timestamp
+- **SigningStatus** — PENDING, SIGNING, SIGNED, FAILED, SKIPPED
 
 ---
 
@@ -445,15 +353,12 @@ A persistent Telegram link is also displayed below the Install button so users c
 
 | Concern | Solution |
 |---------|----------|
-| Path traversal on file serving | Filenames validated — no `..` or `/` allowed |
-| Unauthorized uploads | JWT required on `POST /api/apps` and `DELETE /api/apps/:id` |
-| Malicious file types | Multer validates `.ipa` for IPA field, `image/*` for icon field |
-| Filename collisions | All stored files use UUID-based names |
-| Exposed credentials | `.env` and `.env.local` are gitignored |
-| CORS | Backend only accepts configured origins |
-
----
-
-## GitHub Repository
-
-[https://github.com/sajjadowayd/ios-ota-platform](https://github.com/sajjadowayd/ios-ota-platform)
+| Path traversal | StorageService validates all paths relative to base directory |
+| Unauthorized access | JWT auth guard on all admin endpoints |
+| File validation | IPA ZIP magic bytes checked, MIME type validation for icons |
+| Certificate passwords | Encrypted with AES-256-GCM, never stored in plaintext |
+| Shell injection | `execFile` (not `exec`) used for zsign — no shell interpolation |
+| Upload limits | 500MB IPA, 10MB icon, 50MB certificates |
+| CORS | Only configured origins accepted |
+| Rate limiting | Throttler module limits request rates |
+| HTTP headers | Helmet middleware adds security headers |

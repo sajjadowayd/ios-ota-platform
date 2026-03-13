@@ -8,15 +8,83 @@ datasource db {
 }
 
 model App {
-  id            String   @id @default(uuid())
+  id            String       @id @default(uuid())
   name          String
   bundleId      String
   version       String
   description   String
   category      String?
-  ipaFilename   String
-  iconFilename  String
-  downloadCount Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  iconPath      String?
+  ipaFilename   String?
+  iconFilename  String?
+  downloadCount Int          @default(0)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  versions  AppVersion[]
+  downloads Download[]
+}
+
+model AppVersion {
+  id              String        @id @default(uuid())
+  appId           String
+  app             App           @relation(fields: [appId], references: [id], onDelete: Cascade)
+  version         String
+  buildNumber     String?
+  releaseNotes    String?
+  originalIpaPath String
+  signedIpaPath   String?
+  manifestPath    String?
+  signingStatus   SigningStatus  @default(PENDING)
+  signingError    String?
+  certificateId   String?
+  certificate     Certificate?  @relation(fields: [certificateId], references: [id], onDelete: SetNull)
+  fileSize        BigInt?
+  downloadCount   Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  downloads Download[]
+
+  @@index([appId])
+}
+
+enum SigningStatus {
+  PENDING
+  SIGNING
+  SIGNED
+  FAILED
+  SKIPPED
+}
+
+model Certificate {
+  id                   String       @id @default(uuid())
+  name                 String
+  teamName             String?
+  teamId               String?
+  expiresAt            DateTime?
+  p12Path              String
+  p12PasswordEncrypted String
+  provisionProfilePath String?
+  isDefault            Boolean      @default(false)
+  isActive             Boolean      @default(true)
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  versions AppVersion[]
+}
+
+model Download {
+  id        String      @id @default(uuid())
+  appId     String
+  app       App         @relation(fields: [appId], references: [id], onDelete: Cascade)
+  versionId String?
+  version   AppVersion? @relation(fields: [versionId], references: [id], onDelete: SetNull)
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime    @default(now())
+
+  @@index([appId])
+  @@index([versionId])
+  @@index([createdAt])
 }

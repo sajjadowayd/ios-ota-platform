@@ -6,7 +6,12 @@ const nextConfig = {
         protocol: 'http',
         hostname: 'localhost',
         port: '3001',
-        pathname: '/files/icons/**',
+        pathname: '/files/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.trycloudflare.com',
+        pathname: '/files/**',
       },
     ],
   },

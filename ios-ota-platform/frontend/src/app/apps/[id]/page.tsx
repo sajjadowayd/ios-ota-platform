@@ -7,6 +7,22 @@ interface PageProps {
   params: { id: string };
 }
 
+function SigningBadge({ status }: { status: string }) {
+  const config: Record<string, { bg: string; text: string; label: string }> = {
+    SIGNED: { bg: 'bg-green-50', text: 'text-green-700', label: 'Signed' },
+    PENDING: { bg: 'bg-yellow-50', text: 'text-yellow-700', label: 'Pending' },
+    SIGNING: { bg: 'bg-blue-50', text: 'text-blue-700', label: 'Signing...' },
+    FAILED: { bg: 'bg-red-50', text: 'text-red-700', label: 'Failed' },
+    SKIPPED: { bg: 'bg-gray-50', text: 'text-gray-500', label: 'Not Signed' },
+  };
+  const c = config[status] || config.PENDING;
+  return (
+    <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${c.bg} ${c.text}`}>
+      {c.label}
+    </span>
+  );
+}
+
 export default async function AppDetailPage({ params }: PageProps) {
   let app;
   try {
@@ -15,11 +31,11 @@ export default async function AppDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  const iconUrl = getIconUrl(app.iconFilename);
+  const iconUrl = getIconUrl(app);
 
   return (
+    <main className="max-w-5xl mx-auto px-4 py-8">
     <div className="max-w-lg mx-auto space-y-8">
-      {/* Back */}
       <a href="/" className="inline-flex items-center gap-1 text-blue-600 text-sm hover:underline">
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -27,7 +43,6 @@ export default async function AppDetailPage({ params }: PageProps) {
         Back to Library
       </a>
 
-      {/* App header */}
       <div className="flex items-start gap-5">
         <div className="relative w-24 h-24 flex-shrink-0">
           <Image
@@ -52,12 +67,10 @@ export default async function AppDetailPage({ params }: PageProps) {
         </div>
       </div>
 
-      {/* Install button */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex justify-center">
         <InstallButton appId={app.id} appName={app.name} />
       </div>
 
-      {/* Description */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-2">
         <h2 className="font-semibold text-gray-900">Description</h2>
         <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap">
@@ -65,7 +78,35 @@ export default async function AppDetailPage({ params }: PageProps) {
         </p>
       </div>
 
-      {/* Details */}
+      {/* Version History */}
+      {app.versions && app.versions.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          <h2 className="font-semibold text-gray-900 mb-4">Version History</h2>
+          <ul className="space-y-3">
+            {app.versions.map((v) => (
+              <li key={v.id} className="flex items-center justify-between text-sm border-b border-gray-50 pb-3 last:border-0 last:pb-0">
+                <div>
+                  <span className="font-medium text-gray-900">v{v.version}</span>
+                  {v.buildNumber && (
+                    <span className="text-gray-400 ml-1">({v.buildNumber})</span>
+                  )}
+                  <span className="text-gray-400 ml-2">
+                    {new Date(v.createdAt).toLocaleDateString()}
+                  </span>
+                  {v.releaseNotes && (
+                    <p className="text-xs text-gray-500 mt-0.5">{v.releaseNotes}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400">{v.downloadCount} downloads</span>
+                  <SigningBadge status={v.signingStatus} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         <h2 className="font-semibold text-gray-900 mb-4">Information</h2>
         <dl className="space-y-3">
@@ -82,5 +123,6 @@ export default async function AppDetailPage({ params }: PageProps) {
         </dl>
       </div>
     </div>
+    </main>
   );
 }

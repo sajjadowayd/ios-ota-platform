@@ -27,6 +27,7 @@ export default function AdminLoginPage() {
   };
 
   return (
+    <main className="max-w-5xl mx-auto px-4 py-8">
     <div className="min-h-[60vh] flex items-center justify-center">
       <div className="w-full max-w-sm">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 space-y-6">
@@ -74,5 +75,6 @@ export default function AdminLoginPage() {
         </div>
       </div>
     </div>
+    </main>
   );
 }

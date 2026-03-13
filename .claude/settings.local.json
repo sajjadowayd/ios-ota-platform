@@ -52,7 +52,17 @@
       "Bash(curl -s \"http://localhost:3001/api/apps/0b9ff91d-da30-42c3-9854-9f1901e0a5e6/manifest.plist\" | grep \"https://\" && echo \"---\" && curl -s -o /dev/null -w \"Tunnel health: %{http_code}\\\\n\" \"https://desire-seeker-nutritional-tribal.trycloudflare.com/health\" && curl -s -o /dev/null -w \"Manifest via tunnel: %{http_code}\\\\n\" \"https://desire-seeker-nutritional-tribal.trycloudflare.com/api/apps/0b9ff91d-da30-42c3-9854-9f1901e0a5e6/manifest.plist\")",
       "Bash(curl -s -o /dev/null -w \"Frontend tunnel: %{http_code}\\\\n\" \"https://united-discrete-mpg-monte.trycloudflare.com\" && curl -s -o /dev/null -w \"Backend tunnel: %{http_code}\\\\n\" \"https://desire-seeker-nutritional-tribal.trycloudflare.com/health\")",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
-      "Bash(sleep 3 && curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/apps/0b9ff91d-da30-42c3-9854-9f1901e0a5e6)"
+      "Bash(sleep 3 && curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/apps/0b9ff91d-da30-42c3-9854-9f1901e0a5e6)",
+      "Bash(curl -s http://localhost:3001/health && echo \"\" && curl -s http://localhost:3001/api/apps | node -e \"const d=[];process.stdin.on\\('data',c=>d.push\\(c\\)\\);process.stdin.on\\('end',\\(\\)=>{const a=JSON.parse\\(d.join\\(''\\)\\);console.log\\('Apps in DB:',a.length\\);a.forEach\\(x=>console.log\\(' -',x.name,'|',x.version,'| downloads:',x.downloadCount\\)\\)}\\)\")",
+      "Bash(curl -s -X POST http://localhost:3001/api/auth/login -H \"Content-Type: application/json\" -d \"{\\\\\"username\\\\\":\\\\\"admin\\\\\",\\\\\"password\\\\\":\\\\\"admin123\\\\\"}\" | node -e \"const d=[];process.stdin.on\\('data',c=>d.push\\(c\\)\\);process.stdin.on\\('end',\\(\\)=>{const r=JSON.parse\\(d.join\\(''\\)\\);console.log\\(r.token?'Auth: OK - JWT issued':'Auth: FAILED',r.error||''\\)}\\)\")",
+      "Bash(curl -s http://localhost:3001/health && echo \"\" && curl -s -I -X OPTIONS \"http://localhost:3001/api/apps\" -H \"Origin: https://united-discrete-mpg-monte.trycloudflare.com\" 2>&1 | grep -i \"access-control\\\\|origin\\\\|http\")",
+      "Bash(touch /c/Users/sajja/Desktop/C/ios-ota-platform/backend/src/index.ts && sleep 5 && curl -s -I -X OPTIONS \"http://localhost:3001/api/apps\" -H \"Origin: https://united-discrete-mpg-monte.trycloudflare.com\" 2>&1 | grep -i \"access-control-allow-origin\")",
+      "Bash(tasklist)",
+      "Bash(rmdir /s /q node_modules)",
+      "Bash(del package-lock.json)",
+      "Bash(cmd.exe /c \"rmdir /s /q node_modules\")",
+      "Bash(npx nest:*)",
+      "Bash(npx next:*)"
     ]
   }
 }

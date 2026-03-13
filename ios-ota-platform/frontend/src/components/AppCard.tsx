@@ -7,7 +7,7 @@ interface AppCardProps {
 }
 
 export default function AppCard({ app }: AppCardProps) {
-  const iconUrl = getIconUrl(app.iconFilename);
+  const iconUrl = getIconUrl(app);
   const installLink = getInstallLink(app.id);
 
   return (
