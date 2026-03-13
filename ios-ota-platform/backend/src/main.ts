@@ -3,6 +3,11 @@ import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
+// Fix BigInt JSON serialization (Prisma returns BigInt for large numeric fields)
+(BigInt.prototype as any).toJSON = function () {
+  return Number(this);
+};
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 

@@ -62,7 +62,23 @@
       "Bash(del package-lock.json)",
       "Bash(cmd.exe /c \"rmdir /s /q node_modules\")",
       "Bash(npx nest:*)",
-      "Bash(npx next:*)"
+      "Bash(npx next:*)",
+      "Bash(node -e \"try { require\\(''tailwindcss''\\); console.log\\(''tailwindcss OK''\\); } catch\\(e\\) { console.log\\(''MISSING tailwindcss''\\); }\")",
+      "Bash(node -e \"try { require\\(''postcss''\\); console.log\\(''postcss OK''\\); } catch\\(e\\) { console.log\\(''MISSING postcss''\\); }\")",
+      "Bash(node -e \"try { require\\(''autoprefixer''\\); console.log\\(''autoprefixer OK''\\); } catch\\(e\\) { console.log\\(''MISSING autoprefixer''\\); }\")",
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(npx kill-port:*)",
+      "Bash(cmd.exe /c \"netstat -ano | findstr :3000\")",
+      "Bash(curl -s http://localhost:3000/_next/static/css/app/layout.css?v=1773428891228)",
+      "Bash(curl -s http://localhost:3000 -o /dev/null -w \"%{http_code}\")",
+      "Bash(curl -s http://localhost:3001/health -o /dev/null -w \"%{http_code}\")",
+      "Bash(curl -s http://localhost:3001/health)",
+      "Bash(curl -s http://localhost:3000 -o /dev/null -w \"frontend: %{http_code}\\\\n\")",
+      "Bash(node dist/main.js)",
+      "Bash(ls /c/Users/sajja/Desktop/C/*.png /c/Users/sajja/Desktop/C/*.jpg /c/Users/sajja/Desktop/C/*.svg)",
+      "Bash(node -e \"const fs=require\\(''fs''\\); const png=Buffer.from\\(''iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=='',''base64''\\); fs.writeFileSync\\(''C:\\\\\\\\Users\\\\\\\\sajja\\\\\\\\Desktop\\\\\\\\C\\\\\\\\icon.png'',png\\); console.log\\(''created''\\);\")",
+      "Bash(node -e \"const fs=require\\(''fs''\\),p=require\\(''path''\\); const png=Buffer.from\\(''iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=='',''base64''\\); fs.writeFileSync\\(p.join\\(process.env.USERPROFILE,''Desktop'',''C'',''icon.png''\\),png\\); console.log\\(''ok''\\);\")",
+      "Bash(curl -s -X POST \"http://localhost:3001/api/apps/470f0f00-55d7-47ff-b625-3c9afbcc0a4f/versions/1bb0cf83-575f-4587-a1c0-5acbeec81dc2/sign\" -H \"Content-Type: application/json\" -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiaWF0IjoxNzczNDI5ODEyLCJleHAiOjE3NzM1MTYyMTJ9.OHHDBtQ070-NwYQIrnglPZ97Oj-jPzv2vwOPlwqaO8o\" -d '{\"\"certificateId\"\":\"\"e64c659f-c308-4a75-8f85-901400be1409\"\"}')"
     ]
   }
 }
