@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>items</key>
+    <array>
+      <dict>
+        <key>assets</key>
+        <array>
+          <dict>
+            <key>kind</key>
+            <string>software-package</string>
+            <key>url</key>
+            <string><![CDATA[https://github.com/alibusut/ipafiles/releases/download/storage/052f8b29_94128679-f80f-4bde-9ab2-c79489997faa.ipa]]></string>
+          </dict>
+          <dict>
+            <key>kind</key>
+            <string>full-size-image</string>
+            <key>url</key>
+            <string><![CDATA[https://github.com/alibusut/ipafiles/releases/download/storage/c4de01e7_8a24f8f3-a588-4acb-88d8-90e11dd81bf7.png]]></string>
+          </dict>
+          <dict>
+            <key>kind</key>
+            <string>display-image</string>
+            <key>url</key>
+            <string><![CDATA[https://github.com/alibusut/ipafiles/releases/download/storage/c4de01e7_8a24f8f3-a588-4acb-88d8-90e11dd81bf7.png]]></string>
+          </dict>
+        </array>
+        <key>metadata</key>
+        <dict>
+          <key>bundle-identifier</key>
+          <string><![CDATA[ali.Bawa]]></string>
+          <key>bundle-version</key>
+          <string>1.0.0</string>
+          <key>kind</key>
+          <string>software</string>
+          <key>title</key>
+          <string>Bawa</string>
+        </dict>
+      </dict>
+    </array>
+  </dict>
+</plist>
